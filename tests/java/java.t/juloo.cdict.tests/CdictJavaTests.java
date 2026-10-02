@@ -23,6 +23,16 @@ public class CdictJavaTests
           dict.word(idx), dist, dict.freq(idx));
   }
 
+  static void query_correct(Cdict dict, String word)
+  {
+    int[] indexes = new int[5];
+    int[] costs = new int[5];
+    int n = dict.correct(word, null, 4, 4, indexes, costs);
+    for (int i = 0; i < n; i++)
+      System.out.printf("correction: %s cost=%d freq=%d\n",
+          dict.word(indexes[i]), costs[i], dict.freq(indexes[i]));
+  }
+
   static void query(Cdict dict, String word)
   {
     Cdict.Result r = dict.find(word);
@@ -36,6 +46,7 @@ public class CdictJavaTests
           dict.word(idx), dict.freq(idx), idx);
     query_distance(dict, 1, word);
     query_distance(dict, 2, word);
+    query_correct(dict, word);
   }
 
   public static void main(String[] args) throws Exception

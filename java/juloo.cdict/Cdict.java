@@ -63,6 +63,24 @@ public class Cdict
   public int[] distance(String word, int distance, int count)
   { return distance_native(_ptr, word, distance, count); }
 
+  /** Cost of one ordinary edit in [correct], mirrors [CDICT_COST_EDIT]. */
+  public static final int COST_EDIT = 2;
+  /** Cost of substituting a keyboard neighbour, mirrors
+      [CDICT_COST_PROXIMATE]. */
+  public static final int COST_PROXIMATE = 1;
+  /** Cost of swapping two adjacent bytes, mirrors [CDICT_COST_TRANSPOSE]. */
+  public static final int COST_TRANSPOSE = 1;
+  /** Size of the [proximity] table passed to [correct]: 128 x 128. */
+  public static final int PROXIMITY_SIZE = 16384;
+
+  /** Words close to [word] for spelling correction, see [cdict_correct] in
+      libcdict.h. [proximity] is a 16384-byte table or null. Writes up to
+      [indexes.length] (at most 16) word indexes to [indexes] and their costs
+      to [costs] (same length), best first. Returns the number written. */
+  public int correct(String word, byte[] proximity, int max_cost,
+      int cost_weight, int[] indexes, int[] costs)
+  { return correct_native(_ptr, word, proximity, max_cost, cost_weight, indexes, costs); }
+
   /** Version of the dictionary's format. Dictionaries built for a different
       version are not compatible. */
   public static native int format_version();
@@ -113,4 +131,7 @@ public class Cdict
       int count);
   private static native int[] distance_native(long dict, String word,
       int distance, int count);
+  private static native int correct_native(long dict, String word,
+      byte[] proximity, int max_cost, int cost_weight, int[] indexes,
+      int[] costs);
 }

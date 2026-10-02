@@ -16,6 +16,11 @@
   close match: types distance=2 freq=15
   close match: types distance=2 freq=15
   close match: types distance=2 freq=15
+  correction: types cost=0 freq=15
+  correction: type cost=2 freq=15
+  correction: typed cost=2 freq=11
+  correction: times cost=4 freq=15
+  correction: typ cost=4 freq=15
   $ java -cp cdict_java.jar -Djava.library.path=$PWD juloo.cdict.tests/CdictJavaTests.java -- dict type module function value match
   found: type freq=15 index=7526
   prefix: type freq=15 index=7526
@@ -33,6 +38,11 @@
   close match: the distance=2 freq=15
   close match: time distance=2 freq=15
   close match: true distance=2 freq=15
+  correction: type cost=0 freq=15
+  correction: typ cost=2 freq=15
+  correction: types cost=2 freq=15
+  correction: Type cost=2 freq=14
+  correction: typed cost=2 freq=11
   found: module freq=15 index=5399
   prefix: module freq=15 index=5399
   prefix: modules freq=15 index=5404
@@ -49,6 +59,11 @@
   close match: module distance=2 freq=15
   close match: module distance=2 freq=15
   close match: module distance=2 freq=15
+  correction: module cost=0 freq=15
+  correction: modules cost=2 freq=15
+  correction: Module cost=2 freq=14
+  correction: modulo cost=2 freq=13
+  correction: mdule cost=2 freq=11
   found: function freq=15 index=4302
   prefix: function freq=15 index=4302
   prefix: functions freq=15 index=4306
@@ -65,6 +80,11 @@
   close match: function distance=2 freq=15
   close match: function distance=2 freq=15
   close match: function distance=2 freq=15
+  correction: function cost=0 freq=15
+  correction: functions cost=2 freq=15
+  correction: Function cost=2 freq=10
+  correction: functor cost=4 freq=15
+  correction: functional cost=4 freq=14
   found: value freq=15 index=7722
   prefix: value freq=15 index=7722
   prefix: values freq=15 index=7724
@@ -77,6 +97,11 @@
   close match: value distance=2 freq=15
   close match: value distance=2 freq=15
   close match: value distance=2 freq=15
+  correction: value cost=0 freq=15
+  correction: values cost=2 freq=15
+  correction: Value cost=2 freq=8
+  correction: false cost=4 freq=15
+  correction: val cost=4 freq=15
   found: match freq=15 index=5267
   prefix: match freq=15 index=5267
   prefix: matching freq=15 index=5270
@@ -93,6 +118,11 @@
   close match: match distance=2 freq=15
   close match: match distance=2 freq=15
   close match: match distance=2 freq=15
+  correction: match cost=0 freq=15
+  correction: Match cost=2 freq=14
+  correction: batch cost=2 freq=11
+  correction: catch cost=2 freq=9
+  correction: each cost=4 freq=15
 
   $ java -cp cdict_java.jar -Djava.library.path=$PWD juloo.cdict.tests/CdictJavaTests.java -- dict overload enum defensive coding
   not found: overload
@@ -102,6 +132,10 @@
   close match: overlap distance=2 freq=7
   close match: overlay distance=2 freq=0
   close match: overlook distance=2 freq=0
+  correction: overhead cost=4 freq=9
+  correction: overlap cost=4 freq=7
+  correction: overlay cost=4 freq=0
+  correction: overlook cost=4 freq=0
   not found: enum
   prefix: enumerate freq=13 index=3885
   prefix: enumerated freq=10 index=3886
@@ -116,6 +150,11 @@
   close match: number distance=2 freq=15
   close match: num distance=2 freq=14
   close match: numbers distance=2 freq=14
+  correction: num cost=2 freq=14
+  correction: vnum cost=2 freq=12
+  correction: em cost=4 freq=15
+  correction: end cost=4 freq=15
+  correction: sum cost=4 freq=14
   not found: defensive
   not found: coding
   close match: coming distance=1 freq=5
@@ -125,3 +164,8 @@
   close match: ending distance=2 freq=13
   close match: copying distance=2 freq=12
   close match: copying distance=2 freq=12
+  correction: adding cost=4 freq=13
+  correction: coming cost=2 freq=5
+  correction: encoding cost=4 freq=13
+  correction: ending cost=4 freq=13
+  correction: copying cost=4 freq=12

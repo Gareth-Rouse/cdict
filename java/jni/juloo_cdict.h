@@ -7,6 +7,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef juloo_cdict_Cdict_COST_EDIT
+#define juloo_cdict_Cdict_COST_EDIT 2L
+#undef juloo_cdict_Cdict_COST_PROXIMATE
+#define juloo_cdict_Cdict_COST_PROXIMATE 1L
+#undef juloo_cdict_Cdict_COST_TRANSPOSE
+#define juloo_cdict_Cdict_COST_TRANSPOSE 1L
+#undef juloo_cdict_Cdict_PROXIMITY_SIZE
+#define juloo_cdict_Cdict_PROXIMITY_SIZE 16384L
 /*
  * Class:     juloo_cdict_Cdict
  * Method:    format_version
@@ -78,6 +86,14 @@ JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_suffixes_1native
  */
 JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_distance_1native
   (JNIEnv *, jclass, jlong, jstring, jint, jint);
+
+/*
+ * Class:     juloo_cdict_Cdict
+ * Method:    correct_native
+ * Signature: (JLjava/lang/String;[BII[I[I)I
+ */
+JNIEXPORT jint JNICALL Java_juloo_cdict_Cdict_correct_1native
+  (JNIEnv *, jclass, jlong, jstring, jbyteArray, jint, jint, jintArray, jintArray);
 
 #ifdef __cplusplus
 }

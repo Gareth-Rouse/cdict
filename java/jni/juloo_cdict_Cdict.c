@@ -183,3 +183,35 @@ JNIEXPORT jintArray JNICALL Java_juloo_cdict_Cdict_distance_1native
       indexes, count);
   return jarray_of_int_array(env, indexes, final_len);
 }
+
+JNIEXPORT jint JNICALL Java_juloo_cdict_Cdict_correct_1native
+  (JNIEnv *env, jclass _cls, jlong dictl, jstring jword, jbyteArray jproximity,
+   jint max_cost, jint cost_weight, jintArray jindexes, jintArray jcosts)
+{
+  cdict_t const *dict = (cdict_t const*)dictl;
+  STACK_ALLOCATED_GETSTRINGUTF(cword, jword);
+  int count = (*env)->GetArrayLength(env, jindexes);
+  int costs_len = (*env)->GetArrayLength(env, jcosts);
+  if (costs_len < count)
+    count = costs_len;
+  if (count > 16)
+    count = 16;
+  int idx[16], cst[16];
+  int n;
+  if (jproximity != NULL
+      && (*env)->GetArrayLength(env, jproximity) == CDICT_PROXIMITY_SIZE)
+  {
+    uint8_t *proximity =
+      (*env)->GetPrimitiveArrayCritical(env, jproximity, NULL);
+    n = cdict_correct(dict, cword, strlen(cword), proximity, max_cost,
+        cost_weight, idx, cst, count);
+    (*env)->ReleasePrimitiveArrayCritical(env, jproximity, proximity,
+        JNI_ABORT);
+  }
+  else
+    n = cdict_correct(dict, cword, strlen(cword), NULL, max_cost,
+        cost_weight, idx, cst, count);
+  (*env)->SetIntArrayRegion(env, jindexes, 0, n, idx);
+  (*env)->SetIntArrayRegion(env, jcosts, 0, n, cst);
+  return n;
+}

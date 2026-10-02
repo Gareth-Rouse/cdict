@@ -551,3 +551,192 @@ int cdict_distance(cdict_t const *dict, char const *word, int wlen, int dist,
   distance(dict, dict->root_node, 0, word, word + wlen, 0, dist, &queue);
   return priority_to_sorted_array(&queue, dst, count);
 }
+
+/** ************************************************************************
+    cdict_correct
+    ************************************************************************ */
+
+#define CORRECT_MAX_WLEN 48
+#define CORRECT_MAX_COST 8
+#define CORRECT_MAX_COUNT 16
+/** Maximum depth reachable: [wlen] plus the insertions allowed by
+    [CORRECT_MAX_COST], plus one. Row 0 is the empty prefix. */
+#define CORRECT_MAX_ROWS \
+  (CORRECT_MAX_WLEN + CORRECT_MAX_COST / CDICT_COST_EDIT + 2)
+
+/** Best results seen so far, sorted ascending by [(rank, idx)]. */
+typedef struct
+{
+  int n, max;
+  int idx[CORRECT_MAX_COUNT];
+  int cost[CORRECT_MAX_COUNT];
+  int rank[CORRECT_MAX_COUNT];
+} correct_queue_t;
+
+static bool correct_less(int rank_a, int idx_a, int rank_b, int idx_b)
+{
+  return rank_a < rank_b || (rank_a == rank_b && idx_a < idx_b);
+}
+
+static void correct_add(cdict_t const *dict, correct_queue_t *q, int index,
+    int cost, int weight)
+{
+  int alias = resolve_alias(dict, index);
+  if (alias >= 0)
+    index = alias;
+  int rank = cost * weight - cdict_freq(dict, index);
+  for (int i = 0; i < q->n; i++)
+  {
+    if (q->idx[i] != index)
+      continue;
+    if (rank >= q->rank[i])
+      return;
+    // Remove the existing entry, the new one is inserted below.
+    for (int k = i + 1; k < q->n; k++)
+    {
+      q->idx[k - 1] = q->idx[k];
+      q->cost[k - 1] = q->cost[k];
+      q->rank[k - 1] = q->rank[k];
+    }
+    q->n--;
+    break;
+  }
+  int i = q->n;
+  if (i == q->max)
+  {
+    if (!correct_less(rank, index, q->rank[i - 1], q->idx[i - 1]))
+      return;
+    i--; // Drop the last entry
+  }
+  else
+    q->n++;
+  for (; i > 0 && correct_less(rank, index, q->rank[i - 1], q->idx[i - 1]); i--)
+  {
+    q->idx[i] = q->idx[i - 1];
+    q->cost[i] = q->cost[i - 1];
+    q->rank[i] = q->rank[i - 1];
+  }
+  q->idx[i] = index;
+  q->cost[i] = cost;
+  q->rank[i] = rank;
+}
+
+typedef struct
+{
+  cdict_t const *dict;
+  uchar const *word;
+  int wlen;
+  uint8_t const *proximity;
+  int max_cost;
+  int max_depth;
+  int weight;
+  correct_queue_t q;
+  /** Row [d] of the DP matrix is at [rows + d * (wlen + 1)]. */
+  int rows[CORRECT_MAX_ROWS * (CORRECT_MAX_WLEN + 1)];
+  /** Dictionary bytes on the current path. */
+  uchar path[CORRECT_MAX_ROWS];
+} correct_state_t;
+
+static inline int correct_sub_cost(correct_state_t const *s, uchar a, uchar b)
+{
+  if (a == b)
+    return 0;
+  if (s->proximity && a < 128 && b < 128 && s->proximity[a * 128 + b])
+    return CDICT_COST_PROXIMATE;
+  return CDICT_COST_EDIT;
+}
+
+/** Compute row [depth] from the previous rows after consuming the
+    dictionary byte [c]. Returns [false] if no word below this point can be
+    within [max_cost]. */
+static bool correct_step(correct_state_t *s, int depth, uchar c)
+{
+  if (depth > s->max_depth)
+    return false;
+  int stride = s->wlen + 1;
+  int *row = s->rows + depth * stride;
+  int const *prev = row - stride;
+  int const *prev2 = (depth >= 2) ? prev - stride : NULL;
+  uchar const *w = s->word;
+  s->path[depth - 1] = c;
+  row[0] = prev[0] + CDICT_COST_EDIT;
+  int row_min = row[0];
+  for (int j = 1; j <= s->wlen; j++)
+  {
+    int v = prev[j] + CDICT_COST_EDIT;
+    v = min(v, row[j - 1] + CDICT_COST_EDIT);
+    v = min(v, prev[j - 1] + correct_sub_cost(s, w[j - 1], c));
+    if (prev2 && j >= 2 && w[j - 1] == s->path[depth - 2] && w[j - 2] == c
+        && w[j - 1] != c)
+      v = min(v, prev2[j - 2] + CDICT_COST_TRANSPOSE);
+    row[j] = v;
+    row_min = min(row_min, v);
+  }
+  return row_min <= s->max_cost;
+}
+
+static void correct_node(correct_state_t *s, void const *parent_node, int ptr,
+    int index, int depth)
+{
+  void const *node = PTR_NODE(ptr, parent_node);
+  if (PTR_IS_FINAL(ptr))
+  {
+    int cost = s->rows[depth * (s->wlen + 1) + s->wlen];
+    if (cost <= s->max_cost)
+      correct_add(s->dict, &s->q, index, cost, s->weight);
+    index++;
+  }
+  switch (NODE_KIND(node))
+  {
+    case BRANCHES:
+      {
+        branches_t const *b = node;
+        int len = b->length;
+        for (int i = 0; i < len; i++)
+          if (correct_step(s, depth + 1, b->labels[i]))
+            correct_node(s, b, branch(b, i), index + branch_number(b, i),
+                depth + 1);
+        break;
+      }
+    case PREFIX:
+      {
+        prefix_t const *p = node;
+        int len = PREFIX_LENGTH(p);
+        for (int k = 0; k < len; k++)
+          if (!correct_step(s, depth + k + 1, p->prefix[k]))
+            return;
+        correct_node(s, p, decode_int24(p->next_ptr), index, depth + len);
+        break;
+      }
+  }
+}
+
+int cdict_correct(cdict_t const *dict, char const *word, int wlen,
+    uint8_t const *proximity, int max_cost, int cost_weight,
+    int *dst, int *dst_costs, int count)
+{
+  if (wlen < 0 || wlen > CORRECT_MAX_WLEN || max_cost < 0
+      || max_cost > CORRECT_MAX_COST || count <= 0)
+    return 0;
+  if (count > CORRECT_MAX_COUNT)
+    count = CORRECT_MAX_COUNT;
+  correct_state_t s;
+  s.dict = dict;
+  s.word = (uchar const*)word;
+  s.wlen = wlen;
+  s.proximity = proximity;
+  s.max_cost = max_cost;
+  s.max_depth = wlen + max_cost / CDICT_COST_EDIT + 1;
+  s.weight = cost_weight;
+  s.q.n = 0;
+  s.q.max = count;
+  for (int j = 0; j <= wlen; j++)
+    s.rows[j] = j * CDICT_COST_EDIT;
+  correct_node(&s, dict->root_node, 0, 0, 0);
+  for (int i = 0; i < s.q.n; i++)
+  {
+    dst[i] = s.q.idx[i];
+    dst_costs[i] = s.q.cost[i];
+  }
+  return s.q.n;
+}

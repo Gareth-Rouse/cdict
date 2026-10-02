@@ -92,6 +92,31 @@ int cdict_suffixes(cdict_t const *dict, cdict_result_t const *r, int *dst,
 int cdict_distance(cdict_t const *dict, char const *word, int wlen, int dist,
     int *dst, int count);
 
+/** Cost units used by [cdict_correct]. One ordinary edit costs
+    [CDICT_COST_EDIT]. */
+#define CDICT_COST_EDIT 2
+/** Substituting a byte with a neighbour on the keyboard, see [proximity]. */
+#define CDICT_COST_PROXIMATE 1
+/** Swapping two adjacent bytes ("teh" -> "the"). */
+#define CDICT_COST_TRANSPOSE 1
+/** Size in bytes of the [proximity] table: 128 x 128. */
+#define CDICT_PROXIMITY_SIZE 16384
+
+/** Lists words whose weighted Damerau-Levenshtein (optimal string alignment)
+    cost from [word] is at most [max_cost]. Insertion, deletion and
+    substitution cost [CDICT_COST_EDIT]; substitution of ASCII byte [a] by
+    ASCII byte [b] costs [CDICT_COST_PROXIMATE] when
+    [proximity[a * 128 + b] != 0]; transposition of two adjacent bytes costs
+    [CDICT_COST_TRANSPOSE]. [proximity] may be NULL. Results are ranked by
+    [cost * cost_weight - freq] ascending, ties by increasing index, after
+    alias resolution; a word index appears at most once, with its lowest
+    cost. Writes up to [count] (at most 16) indexes to [dst] and their costs
+    to [dst_costs]; returns the number written. Returns 0 when [wlen] > 48 or
+    [max_cost] > 8. The query itself is included with cost 0 if it is a word. */
+int cdict_correct(cdict_t const *dict, char const *word, int wlen,
+    uint8_t const *proximity, int max_cost, int cost_weight,
+    int *dst, int *dst_costs, int count);
+
 /** Version of the dictionary's format. Dictionaries built for a different
     version are not compatible. */
 int cdict_format_version();
