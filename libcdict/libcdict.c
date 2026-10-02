@@ -633,6 +633,8 @@ typedef struct
   correct_queue_t q;
   /** Row [d] of the DP matrix is at [rows + d * (wlen + 1)]. */
   int rows[CORRECT_MAX_ROWS * (CORRECT_MAX_WLEN + 1)];
+  /** Row minima are indexed by depth so sibling branches share no state. */
+  int row_min[CORRECT_MAX_ROWS];
   /** Dictionary bytes on the current path. */
   uchar path[CORRECT_MAX_ROWS];
 } correct_state_t;
@@ -672,7 +674,10 @@ static bool correct_step(correct_state_t *s, int depth, uchar c)
     row[j] = v;
     row_min = min(row_min, v);
   }
-  return row_min <= s->max_cost;
+  s->row_min[depth] = row_min;
+  // The next row may transpose from [prev], bypassing this row.
+  return row_min <= s->max_cost
+    || s->row_min[depth - 1] + CDICT_COST_TRANSPOSE <= s->max_cost;
 }
 
 static void correct_node(correct_state_t *s, void const *parent_node, int ptr,
@@ -732,6 +737,7 @@ int cdict_correct(cdict_t const *dict, char const *word, int wlen,
   s.q.max = count;
   for (int j = 0; j <= wlen; j++)
     s.rows[j] = j * CDICT_COST_EDIT;
+  s.row_min[0] = 0;
   correct_node(&s, dict->root_node, 0, 0, 0);
   for (int i = 0; i < s.q.n; i++)
   {
